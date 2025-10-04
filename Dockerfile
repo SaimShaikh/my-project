@@ -1,31 +1,23 @@
-# Install dependencies and build
-FROM node:20-alpine AS builder
+# --- Build stage ---
+FROM node:22-alpine AS builder
 WORKDIR /app
-ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci
+
 COPY . .
-# Install using pnpm if lockfile exists; fallback to npm
-RUN if [ -f pnpm-lock.yaml ]; then \
-      corepack enable && corepack prepare pnpm@latest --activate && pnpm i --frozen-lockfile; \
-    elif [ -f yarn.lock ]; then \
-      corepack enable && corepack prepare yarn@stable --activate && yarn install --frozen-lockfile; \
-    else \
-      npm ci --omit=dev=false; \
-    fi
-RUN npm run build || (echo "If using Next.js, ensure a Next.js build is configured"; exit 0)
+RUN npm run build
 
-# Production image
-FROM node:20-alpine AS runner
+# --- Runtime stage ---
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
+
+# copy only what we need to run
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+
 EXPOSE 3000
-
-# Copy all app files
-COPY --from=builder /app ./
-
-# App expects env variables for DB connection:
-# DB_HOST, DB_USER, DB_PASSWORD, DB_PORT, DB_NAME
-
-# Start the app at port 3000.
-# If using Next.js build output:
 CMD ["npm", "start"]
