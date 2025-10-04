@@ -119,6 +119,7 @@ export function StudentForm({ initial, onDone, mode }: Props) {
               value={form.first_name}
               onChange={(e) => handleChange("first_name", e.target.value)}
               aria-invalid={!!errors.first_name}
+              autoFocus
             />
             {errors.first_name && <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.first_name}</p>}
           </div>

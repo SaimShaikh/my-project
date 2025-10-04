@@ -7,12 +7,25 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Student } from "@/lib/validation"
 import { StudentForm } from "./student-form"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { toast } from "@/hooks/use-toast"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export default function StudentsDashboard() {
   const [query, setQuery] = useState("")
   const [location, setLocation] = useState("")
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+
   const url = useMemo(() => {
     const p = new URLSearchParams()
     if (query.trim()) p.set("query", query.trim())
@@ -25,6 +38,23 @@ export default function StudentsDashboard() {
 
   function refresh() {
     mutate(url)
+  }
+
+  async function handleConfirmDelete(id: number) {
+    try {
+      setDeletingId(id)
+      const res = await fetch(`/api/students/${id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || "Failed to delete")
+      }
+      toast({ title: "Student deleted", description: `Record #${id} was removed.` })
+      refresh()
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err?.message || "Could not delete the student." })
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   return (
@@ -97,8 +127,38 @@ export default function StudentsDashboard() {
                     <td className="p-3">{s.phone ?? "-"}</td>
                     <td className="p-3">{s.email}</td>
                     <td className="p-3">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
                         <StudentForm mode="edit" initial={s} onDone={refresh} />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              disabled={deletingId === s.id}
+                              className="transition-transform duration-200 hover:scale-[1.02]"
+                              aria-label={`Delete ${s.first_name} ${s.last_name}`}
+                            >
+                              {deletingId === s.id ? "Deleting..." : "Delete"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-balance">Delete this student?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently remove the student record (ID {s.id}). This action cannot be
+                                undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="flex justify-end gap-2 pt-2">
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleConfirmDelete(s.id)}
+                                className="bg-[var(--color-destructive)] text-[var(--color-destructive-foreground)] hover:opacity-90"
+                              >
+                                Confirm delete
+                              </AlertDialogAction>
+                            </div>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </td>
                   </tr>

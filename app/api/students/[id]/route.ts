@@ -41,3 +41,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: message }, { status })
   }
 }
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const id = Number(params.id)
+    if (!Number.isInteger(id) || id <= 0) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 })
+    }
+
+    const db = getDb()
+    await db.execute(`DELETE FROM students WHERE id = ?`, [id])
+
+    return NextResponse.json({ ok: true })
+  } catch (err: any) {
+    console.error("[v0] DELETE /api/students/[id] error:", err)
+    const message = err?.message || "Failed to delete"
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
