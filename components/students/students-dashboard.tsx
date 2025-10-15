@@ -20,7 +20,7 @@ import {
 import { toast } from "@/hooks/use-toast"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
+const OWNER_NAME = "Saime Shaikh"
 export default function StudentsDashboard() {
   const [query, setQuery] = useState("")
   const [location, setLocation] = useState("")
@@ -61,7 +61,7 @@ export default function StudentsDashboard() {
     <main className="p-4 md:p-8">
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-balance">Student Records</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-balance">Student Records App Made By Saime Shaikh</h1>
           <p className="text-sm text-muted-foreground">Search, filter, add, and edit student data.</p>
         </div>
         <StudentForm mode="create" onDone={refresh} />
@@ -174,6 +174,10 @@ export default function StudentsDashboard() {
             </table>
           </CardContent>
         </Card>
+      </div>
+      
+      <div className="fixed bottom-4 right-4 text-xs text-muted-foreground bg-background/80 backdrop-blur border rounded-full px-3 py-1 shadow-sm">
+        Crafted with care by <span className="font-medium">{OWNER_NAME}</span>
       </div>
     </main>
   )

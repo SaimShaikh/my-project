@@ -1,19 +1,31 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { z } from "zod"
 import { studentSchema, type StudentInput, type Student } from "@/lib/validation"
 import useSWRMutation from "swr/mutation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { toast } from "@/hooks/use-toast"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { CalendarIcon, Loader2 } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
-type Props = {
-  initial?: Partial<Student>
-  onDone?: () => void
-  mode: "create" | "edit"
+// ---------- helpers ----------
+function calcAgeFromDOB(dobISO: string | undefined) {
+  if (!dobISO) return "" as unknown as number
+  const d = new Date(dobISO)
+  if (Number.isNaN(+d)) return "" as unknown as number
+  const today = new Date()
+  let age = today.getFullYear() - d.getFullYear()
+  const m = today.getMonth() - d.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--
+  return age as unknown as number
 }
 
 async function postJSON(url: string, { arg }: { arg: any }) {
@@ -42,9 +54,18 @@ async function patchJSON(url: string, { arg }: { arg: any }) {
   return res.json()
 }
 
+// ---------- component ----------
+
+type Props = {
+  initial?: Partial<Student>
+  onDone?: () => void
+  mode: "create" | "edit"
+}
+
 export function StudentForm({ initial, onDone, mode }: Props) {
   const [open, setOpen] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const [form, setForm] = useState<StudentInput>({
     first_name: initial?.first_name ?? "",
@@ -63,12 +84,24 @@ export function StudentForm({ initial, onDone, mode }: Props) {
     patchJSON,
   )
 
+  const busy = creating || updating
+
   function handleChange<K extends keyof StudentInput>(key: K, value: StudentInput[K]) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
+  // auto-calc age from DOB if empty
+  useEffect(() => {
+    if (!form.date_of_birth) return
+    const computed = calcAgeFromDOB(form.date_of_birth)
+    if (!form.age && computed) {
+      setForm((f) => ({ ...f, age: computed }))
+    }
+  }, [form.date_of_birth])
+
   async function handleSubmit() {
     setErrors({})
+    setApiError(null)
     try {
       const parsed = studentSchema.parse(form)
       if (mode === "create") {
@@ -89,12 +122,27 @@ export function StudentForm({ initial, onDone, mode }: Props) {
         }
         setErrors(fieldErrors)
       } else {
-        toast({ title: "Error", description: err?.message || "Something went wrong." })
+        const msg = err?.message || "Something went wrong."
+        setApiError(msg)
+        toast({ title: "Error", description: msg })
       }
     }
   }
 
-  const busy = creating || updating
+  // phone mask (lightweight, non-intrusive)
+  function formatPhone(v: string) {
+    const d = v.replace(/\D/g, "").slice(0, 15)
+    if (d.startsWith("91") && d.length > 2) return "+" + d
+    if (v.startsWith("+")) return "+" + d
+    return d
+  }
+
+  // dialog title/cta text
+  const title = mode === "create" ? "Add Student" : "Edit Student"
+  const cta = busy ? "Saving..." : mode === "create" ? "Create" : "Save changes"
+
+  // pre-format date to Date object for Calendar
+  const dobDate = useMemo(() => (form.date_of_birth ? new Date(form.date_of_birth) : undefined), [form.date_of_birth])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -102,15 +150,21 @@ export function StudentForm({ initial, onDone, mode }: Props) {
         {mode === "create" ? (
           <Button className="transition-transform duration-200 hover:scale-[1.02]">Add Student</Button>
         ) : (
-          <Button variant="secondary" className="transition-transform duration-200 hover:scale-[1.02]">
-            Edit
-          </Button>
+          <Button variant="secondary" className="transition-transform duration-200 hover:scale-[1.02]">Edit</Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-balance">{mode === "create" ? "Add Student" : "Edit Student"}</DialogTitle>
+          <DialogTitle className="text-balance">{title}</DialogTitle>
+          <DialogDescription>Fill out the student details below. Fields with errors will be highlighted.</DialogDescription>
         </DialogHeader>
+
+        {apiError && (
+          <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+            {apiError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="first_name">First Name</Label>
@@ -120,19 +174,23 @@ export function StudentForm({ initial, onDone, mode }: Props) {
               onChange={(e) => handleChange("first_name", e.target.value)}
               aria-invalid={!!errors.first_name}
               autoFocus
+              placeholder="e.g. Rahul"
             />
             {errors.first_name && <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.first_name}</p>}
           </div>
+
           <div>
-            <Label htmlFor="middle_name">Middle Name</Label>
+            <Label htmlFor="middle_name">Middle Name <span className="text-muted-foreground">(optional)</span></Label>
             <Input
               id="middle_name"
               value={form.middle_name ?? ""}
               onChange={(e) => handleChange("middle_name", e.target.value)}
               aria-invalid={!!errors.middle_name}
+              placeholder="—"
             />
             {errors.middle_name && <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.middle_name}</p>}
           </div>
+
           <div>
             <Label htmlFor="last_name">Last Name</Label>
             <Input
@@ -140,11 +198,21 @@ export function StudentForm({ initial, onDone, mode }: Props) {
               value={form.last_name}
               onChange={(e) => handleChange("last_name", e.target.value)}
               aria-invalid={!!errors.last_name}
+              placeholder="e.g. Sharma"
             />
             {errors.last_name && <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.last_name}</p>}
           </div>
+
           <div>
-            <Label htmlFor="age">Age</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="age">Age</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger className="text-xs text-muted-foreground underline underline-offset-4">Auto from DOB</TooltipTrigger>
+                  <TooltipContent>We prefill this when you pick a date of birth. You can still edit it.</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               id="age"
               type="number"
@@ -152,22 +220,43 @@ export function StudentForm({ initial, onDone, mode }: Props) {
               value={form.age as any}
               onChange={(e) => handleChange("age", e.target.value as any)}
               aria-invalid={!!errors.age}
+              placeholder="e.g. 21"
             />
             {errors.age && <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.age}</p>}
           </div>
-          <div>
+
+          <div className="md:col-span-1">
             <Label htmlFor="dob">Date of Birth</Label>
-            <Input
-              id="dob"
-              type="date"
-              value={form.date_of_birth}
-              onChange={(e) => handleChange("date_of_birth", e.target.value)}
-              aria-invalid={!!errors.date_of_birth}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="dob"
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dobDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dobDate ? format(dobDate, "yyyy-MM-dd") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dobDate}
+                  onSelect={(d) => handleChange("date_of_birth", d ? format(d, "yyyy-MM-dd") : "")}
+                  captionLayout="dropdown-buttons"
+                  fromYear={1960}
+                  toYear={new Date().getFullYear()}
+                />
+              </PopoverContent>
+            </Popover>
             {errors.date_of_birth && (
               <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.date_of_birth}</p>
             )}
           </div>
+
           <div>
             <Label htmlFor="location">Current Location</Label>
             <Input
@@ -175,22 +264,25 @@ export function StudentForm({ initial, onDone, mode }: Props) {
               value={form.current_location ?? ""}
               onChange={(e) => handleChange("current_location", e.target.value)}
               aria-invalid={!!errors.current_location}
+              placeholder="City, Country"
             />
             {errors.current_location && (
               <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.current_location}</p>
             )}
           </div>
+
           <div>
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Phone <span className="text-muted-foreground">(with country code)</span></Label>
             <Input
               id="phone"
               value={form.phone ?? ""}
-              onChange={(e) => handleChange("phone", e.target.value)}
+              onChange={(e) => handleChange("phone", formatPhone(e.target.value))}
               aria-invalid={!!errors.phone}
-              placeholder="+1 (555) 000-0000"
+              placeholder="+91 9876543210"
             />
             {errors.phone && <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.phone}</p>}
           </div>
+
           <div>
             <Label htmlFor="email">Email</Label>
             <Input
@@ -204,17 +296,17 @@ export function StudentForm({ initial, onDone, mode }: Props) {
             {errors.email && <p className="text-[var(--color-destructive)] text-sm mt-1">{errors.email}</p>}
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-4">
-          <Button variant="secondary" onClick={() => setOpen(false)} className="transition-colors">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={busy}
-            className="transition-transform duration-200 hover:scale-[1.02]"
-          >
-            {busy ? "Saving..." : "Save"}
-          </Button>
+
+        <div className="flex justify-between items-center pt-4">
+          <p className="text-xs text-muted-foreground">All changes are saved to the server when you hit save.</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setOpen(false)} className="transition-colors" disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={busy} className="transition-transform duration-200 hover:scale-[1.02]">
+              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {cta}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
