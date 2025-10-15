@@ -50,7 +50,8 @@ cd my-project/
 ---
 
 ### Step 4:Run MySQL
-``docker run -d \
+``` bash
+  docker run -d \
   --name mysql-container \
   --network student-net \
   -e MYSQL_ROOT_PASSWORD=rootpass \
@@ -70,7 +71,8 @@ cd my-project/
 ---
 
 ### Step 6:Run the App
-``docker run --rm -d \
+``` bash
+  docker run --rm -d \
   --name student-app \
   --network student-net \
   -p 3000:3000 \
@@ -80,7 +82,7 @@ cd my-project/
   -e DB_PORT=3306 \
   -e DB_NAME=student_records \
   mystd:latest
-``
+```
 
 ---
 
