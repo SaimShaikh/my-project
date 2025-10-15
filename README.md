@@ -61,7 +61,7 @@ cd my-project/
   -p 3306:3306 \
   -v mysql_data:/var/lib/mysql \
   mysql:8.0
-``
+```
 
 ---
 
