@@ -40,7 +40,7 @@ cd my-project/
 ---
 
 ### Step 2: Build the App
-``docker build -t mystd:latest .``
+``docker build -t mystd:latest . ``
 
 ---
 
