@@ -62,6 +62,8 @@ cd my-project/
   -v mysql_data:/var/lib/mysql \
   mysql:8.0
 ```
+** or in One line**
+``docker run -d --name mysql-container --network student-net -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=student_records -e MYSQL_USER=admin -e MYSQL_PASSWORD=admin -p 3306:3306 -v /home/ubuntu/student-app/mysql-data:/var/lib/mysql mysql:8.0``
 
 ---
 
