@@ -211,3 +211,11 @@ docker exec -it mysql-container mysql -uadmin -padminpass -e "SELECT * FROM stud
 
 * Removing the MySQL container will **not** delete your data since it’s stored in `/home/ubuntu/student-app/mysql-data` on your host.
 * Only deleting that folder will remove the database permanently.
+
+---
+If you liked this project, don’t forget to ⭐ the repo  
+and connect with me on LinkedIn 👇  
+
+🔗 [Saime Shaikh]([https://www.linkedin.com/in/saimeshaikh/](https://www.linkedin.com/in/saim-shaikh-devops/))  
+Let’s grow together in the DevOps community 🚀
+
