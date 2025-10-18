@@ -24,34 +24,37 @@ The app connects to a MySQL container to manage student records — including de
 
 ---
 
-## 📂 Project Structure
 
 
----
+### **Step 1: Clone the Repository**
 
-
-## ⚙️ Setup & Run Locally
-
-### Step 1: Clone the Repository**
 ```bash
-git clone
+git clone <REPO_URL>
 cd my-project/
 ```
----
-
-### Step 2: Build the App
-``docker build -t mystd:latest . ``
 
 ---
 
-### Step 3:Create Docker Network
-``docker network create student-net``
+### **Step 2: Build the App**
+
+```bash
+sudo docker build -t mystd:latest .
+```
 
 ---
 
-### Step 4:Run MySQL
-``` bash
-  docker run -d \
+### **Step 3: Create Docker Network**
+
+```bash
+docker network create student-net
+```
+
+---
+
+### **Step 4: You can Pull or Direct Run MySQL**
+
+```bash
+docker run -d \
   --name mysql-container \
   --network student-net \
   -e MYSQL_ROOT_PASSWORD=rootpass \
@@ -59,22 +62,75 @@ cd my-project/
   -e MYSQL_USER=admin \
   -e MYSQL_PASSWORD=adminpass \
   -p 3306:3306 \
-  -v mysql_data:/var/lib/mysql \
+  -v /home/ubuntu/student-app/mysql-data:/var/lib/mysql \
+  -v /home/ubuntu/student-app/scripts:/docker-entrypoint-initdb.d:ro \
   mysql:8.0
 ```
-** or in One line**
-``docker run -d --name mysql-container --network student-net -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=student_records -e MYSQL_USER=admin -e MYSQL_PASSWORD=admin -p 3306:3306 -v /home/ubuntu/student-app/mysql-data:/var/lib/mysql mysql:8.0``
 
 ---
 
-### Step 5:Import Schema
-``docker cp scripts/001_create_students.sql mysql-container:/tmp/001_create_students.sql``
+## -v /home/ubuntu/student-app/mysql-data:/var/lib/mysql \  First volume — MySQL Data Storage  
+
+- “Hey, don’t keep MySQL data inside the container — store it in this folder on my host machine.”
+
+- Left side (/home/ubuntu/student-app/mysql-data) → this is a folder on your EC2 or local host.
+
+- Right side (/var/lib/mysql) → this is the folder inside the container where MySQL stores all its databases.
+- So every time MySQL writes data (tables, rows, users, logs, etc.), it’s actually writing to your host directory.
+
+     - ⚙️ Why it matters:
+     - ✅ Your data survives even if you remove or rebuild the container.
+     - ✅ You can back it up, inspect it, or move it easily.
+     - 🔥 Real-world DevOps setups always persist DB data like this.
+
+## -v /home/ubuntu/student-app/scripts:/docker-entrypoint-initdb.d:ro   Second volume — SQL Init Scripts
+- “Hey MySQL, here’s a folder with SQL files you should run automatically when you start for the first time.”
+
+- Left side (/home/ubuntu/student-app/scripts) → your host folder where you put the file 001_create_students.sql.
+
+- Right side (/docker-entrypoint-initdb.d) → special folder inside the MySQL image.
+
+    - ⚙️ How it works: When a MySQL container starts for the first time (with an empty data directory),it looks inside /docker-entrypoint-initdb.d and automatically executes:
+    - .sql files
+    - .sh scripts
+    - .sql.gz files
+    - So your table (students) gets created automatically from that SQL file — no need to manually import later.
+
+## 🧩 Summary Table
+| Mount Path                                                        | Purpose                              | Inside Container              | Type       | When Used                  |
+| ----------------------------------------------------------------- | ------------------------------------ | ----------------------------- | ---------- | -------------------------- |
+| `/home/ubuntu/student-app/mysql-data:/var/lib/mysql`              | Stores database data persistently    | `/var/lib/mysql`              | Read/Write | Always                     |
+| `/home/ubuntu/student-app/scripts:/docker-entrypoint-initdb.d:ro` | Auto-runs SQL files to initialize DB | `/docker-entrypoint-initdb.d` | Read-only  | First container start only |
+
 
 ---
 
-### Step 6:Run the App
-``` bash
-  docker run --rm -d \
+### **Step 5: Import Schema**
+
+```bash
+cd my-project/
+docker cp scripts/001_create_students.sql mysql-container:/tmp/001_create_students.sql
+docker exec -i mysql-container mysql -uroot -prootpass student_records < ./scripts/001_create_students.sql
+```
+
+---
+
+### **Step 6: Verify Database**
+
+```bash
+docker exec -it mysql-container mysql -uroot -prootpass -e "SELECT User, Host FROM mysql.user;"
+docker exec -it mysql-container mysql -uadmin -padminpass -e "USE student_records; SHOW TABLES;"
+```
+<img width="3318" height="747" alt="image" src="https://github.com/user-attachments/assets/b353ac3d-2f3b-40eb-8a29-a1dbe9376b00" />
+<img width="3308" height="444" alt="image" src="https://github.com/user-attachments/assets/2dba6571-5a77-46ab-a848-8589b536c151" />
+
+
+---
+
+### **Step 7: Run the App**
+
+```bash
+docker run -d \
   --name student-app \
   --network student-net \
   -p 3000:3000 \
@@ -88,41 +144,48 @@ cd my-project/
 
 ---
 
-### Step 7:Access the App http://<EC2_PUBLIC_IP>:3000
-<img width="3296" height="2004" alt="image" src="https://github.com/user-attachments/assets/cef15998-a85e-47c5-a675-92bc6a46dd17" />
+### **Step 8: Check Containers**
+
+```bash
+docker ps
+```
 
 ---
 
-### Step 8:Access the Database 
-```
-docker exec -it mysql-container bash
-mysql -uadmin -padminpass
-SHOW DATABASES ;
-+--------------------+
-| Database           |
-+--------------------+
-| information_schema |
-| performance_schema |
-| student_records    |
-+--------------------+
-3 rows in set (0.01 sec)
+### **Step 9: Access the App**
 
-USE student_records;
-SHOW TABLES;
-+---------------------------+
-| Tables_in_student_records |
-+---------------------------+
-| students                  |
-+---------------------------+
-
-DESCRIBE students;
-SELECT * FROM students;
 ```
-<img width="3321" height="616" alt="image" src="https://github.com/user-attachments/assets/ac366914-00a5-44f5-aa87-67936311c8bf" />
+http://<EC2_PUBLIC_IP>:3000
+```
+
+---
+
+### **Step 10: Verify Database Files (Host Path)**
+
+```bash
+cd /home/ubuntu/student-app/mysql-data
+ls
+```
 
 ---
 
 
 
+# if you stop and remove mysql Container the data won’t be displaying but still in host machine 
+<img width="3349" height="1789" alt="image" src="https://github.com/user-attachments/assets/6ff54ff2-4779-48bb-97e0-0a2e885f372d" />
+
+<img width="3342" height="2027" alt="image" src="https://github.com/user-attachments/assets/3d15aef2-7f82-4ca5-b8df-2d80833b8f6b" />
 
 
+
+# Start 
+<img width="2773" height="1608" alt="image" src="https://github.com/user-attachments/assets/41c74b57-e8e5-407d-a3f1-d42594559efb" />
+
+<img width="3330" height="2005" alt="image" src="https://github.com/user-attachments/assets/862dcc9a-a467-4e66-96fa-78f0886b9287" />
+
+---
+
+✅ **Note:**
+
+* Removing the MySQL container will **not** delete your data since it’s stored in `/home/ubuntu/student-app/mysql-data` on your host.
+* Only deleting that folder will remove the database permanently.
