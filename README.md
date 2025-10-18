@@ -43,7 +43,12 @@ sudo docker build -t mystd:latest .
 
 ---
 
-### **Step 3: Create Docker Network**
+### **Step 3: Create Data Location and also Create Docker Network**
+
+```bash
+mkdir -p /home/ubuntu/student-app/mysql-data
+
+```
 
 ```bash
 docker network create student-net
