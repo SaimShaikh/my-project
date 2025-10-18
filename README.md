@@ -185,6 +185,22 @@ ls
 
 ---
 
+
+# Want to access database inside the container 
+```bash
+docker exec -it mysql-container bash
+mysql -uadmin -padminpass
+SHOW DATABASES;
+USE student_records;
+SHOW TABLES;
+SELECT * FROM students;
+or use Shortcut
+docker exec -it mysql-container mysql -uadmin -padminpass -e "SELECT * FROM student_records.students;"
+
+
+```
+<img width="1680" height="1050" alt="Screenshot 2025-10-18 at 3 43 03 PM" src="https://github.com/user-attachments/assets/1265cb89-1903-431b-876f-35af54c84b3d" />
+
 ✅ **Note:**
 
 * Removing the MySQL container will **not** delete your data since it’s stored in `/home/ubuntu/student-app/mysql-data` on your host.
