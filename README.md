@@ -186,7 +186,8 @@ ls
 # Start 
 <img width="2773" height="1608" alt="image" src="https://github.com/user-attachments/assets/41c74b57-e8e5-407d-a3f1-d42594559efb" />
 
-<img width="3330" height="2005" alt="image" src="https://github.com/user-attachments/assets/862dcc9a-a467-4e66-96fa-78f0886b9287" />
+<img width="3330" height="2005" alt="Screenshot 2025-10-18 at 3 02 18 PM" src="https://github.com/user-attachments/assets/f81f7b2a-8140-4cae-97f7-23bf38b0039b" />
+
 
 ---
 
