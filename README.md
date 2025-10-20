@@ -59,17 +59,13 @@ docker network create student-net
 ### **Step 4: You can Pull or Direct Run MySQL**
 
 ```bash
-docker run -d \
-  --name mysql-container \
-  --network student-net \
-  -e MYSQL_ROOT_PASSWORD=rootpass \
-  -e MYSQL_DATABASE=student_records \
-  -e MYSQL_USER=admin \
-  -e MYSQL_PASSWORD=adminpass \
-  -p 3306:3306 \
-  -v /home/ubuntu/student-app/mysql-data:/var/lib/mysql \
-  -v /home/ubuntu/student-app/scripts:/docker-entrypoint-initdb.d:ro \
-  mysql:8.0
+# Without Volume
+docker run -d --name mysql-container --network student-net -e MYSQL_ROOT_PASSWORD=rootpass -e MYSQL_DATABASE=student_records -e MYSQL_USER=admin -e MYSQL_PASSWORD=adminpass -p 3306:3306 mysql
+
+# With Volume
+docker run -d --name mysql-container --network student-net -e MYSQL_ROOT_PASSWORD=rootpass -e MYSQL_DATABASE=student_records -e MYSQL_USER=admin -e MYSQL_PASSWORD=adminpass -p 3306:3306 -v /home/ubuntu/student-app/mysql-data:/var/lib/mysql -v /home/ubuntu/student-app/scripts:/docker-entrypoint-initdb.d:ro mysql
+
+
 ```
 
 ---
@@ -135,16 +131,8 @@ docker exec -it mysql-container mysql -uadmin -padminpass -e "USE student_record
 ### **Step 7: Run the App**
 
 ```bash
-docker run -d \
-  --name student-app \
-  --network student-net \
-  -p 3000:3000 \
-  -e DB_HOST=mysql-container \
-  -e DB_USER=admin \
-  -e DB_PASSWORD=adminpass \
-  -e DB_PORT=3306 \
-  -e DB_NAME=student_records \
-  mystd:latest
+docker run -d --name student-app --network student-net -p 3000:3000 -e DB_HOST=mysql-container -e DB_USER=admin -e DB_PASSWORD=adminpass -e DB_PORT=3306 -e DB_NAME=student_records mystd 
+
 ```
 
 ---
