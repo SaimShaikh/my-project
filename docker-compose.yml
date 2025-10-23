@@ -1,0 +1,52 @@
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: student_records
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: adminpass
+    volumes:
+      # Persist MySQL data
+      - ./mysql-data:/var/lib/mysql
+      # Run schema creation script automatically at startup
+      - ./scripts:/docker-entrypoint-initdb.d
+    networks:
+      - student_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  student-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mystd:latest
+    container_name: student-app
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: mysql-container
+      DB_USER: admin
+      DB_PASSWORD: adminpass
+      DB_PORT: 3306
+      DB_NAME: student_records
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - student_net
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  student_net:
